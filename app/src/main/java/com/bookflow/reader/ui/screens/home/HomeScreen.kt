@@ -151,6 +151,29 @@ fun HomeScreen(navController: NavController) {
         bookNotes = repository.getBookNotes()
     }
 
+    // Auto-refresh when returning to HomeScreen from floating mode or other apps
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val uNotes = repository.getUniversalNotes()
+                    val bNotes = repository.getBookNotes()
+                    val rBooks = repository.getRecentBooks()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        universalNotes = uNotes
+                        bookNotes = bNotes
+                        recentBooks = rBooks
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Load active universal note or book note strokes and text boxes
     LaunchedEffect(activeUniversalNote?.id, activeBookNote?.bookUri, showGlobalNotebook) {
         if (showGlobalNotebook) {
@@ -1461,6 +1484,7 @@ fun HomeScreen(navController: NavController) {
                     com.bookflow.reader.service.FloatingNoteData.canvasTemplate = com.bookflow.reader.data.model.CanvasTemplate.DOT_GRID
                     com.bookflow.reader.service.FloatingNoteData.bookUri = activeBookNote?.bookUri ?: ""
                     com.bookflow.reader.service.FloatingNoteData.bookTitle = currentTitle
+                    com.bookflow.reader.service.FloatingNoteData.universalNoteId = if (activeBookNote == null) (activeUniversalNote?.id ?: "default_universal_note") else ""
                     com.bookflow.reader.service.FloatingNoteData.isGlobalMode = activeUniversalNote != null || activeBookNote == null
                     com.bookflow.reader.service.FloatingNoteData.isStylusOnly = true
 

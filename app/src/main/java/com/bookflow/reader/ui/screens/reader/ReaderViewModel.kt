@@ -919,6 +919,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun saveCurrentInfiniteNotes(notes: List<AnnotationStroke>) {
+        if (com.bookflow.reader.service.FloatingNoteData.isActive ||
+            com.bookflow.reader.service.FloatingNoteData.bookUri == _uiState.value.bookUri) {
+            com.bookflow.reader.service.FloatingNoteData.strokes = notes
+        }
         viewModelScope.launch(Dispatchers.IO) {
             if (_uiState.value.isGlobalNotebookMode) {
                 repository.saveGlobalInfiniteNotes(notes)
@@ -988,12 +992,24 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     fun reloadInfiniteNotes() {
         viewModelScope.launch(Dispatchers.IO) {
-            val notes = if (_uiState.value.isGlobalNotebookMode) {
+            val floatingStrokes = com.bookflow.reader.service.FloatingNoteData.strokes
+            val floatingBoxes = com.bookflow.reader.service.FloatingNoteData.textBoxes
+            val isFloatingMatching = floatingStrokes.isNotEmpty() &&
+                (com.bookflow.reader.service.FloatingNoteData.bookUri == _uiState.value.bookUri ||
+                 (com.bookflow.reader.service.FloatingNoteData.isGlobalMode && _uiState.value.isGlobalNotebookMode))
+
+            val notes = if (isFloatingMatching) {
+                floatingStrokes
+            } else if (_uiState.value.isGlobalNotebookMode) {
                 repository.loadGlobalInfiniteNotes()
             } else {
                 repository.loadInfiniteNotes(_uiState.value.bookUri)
             }
-            val boxes = repository.loadNoteTextBoxes(_uiState.value.bookUri)
+            val boxes = if (isFloatingMatching && floatingBoxes.isNotEmpty()) {
+                floatingBoxes
+            } else {
+                repository.loadNoteTextBoxes(_uiState.value.bookUri)
+            }
             withContext(Dispatchers.Main) {
                 _uiState.update {
                     it.copy(

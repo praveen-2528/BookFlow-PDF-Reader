@@ -93,6 +93,20 @@ fun ReaderScreen(
         viewModel.loadPdf(context, uri, pageOffset)
     }
 
+    // Auto-reload notes when returning to Reader from floating mode or other apps
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.reloadInfiniteNotes()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(
         uiState.isUiVisible,
         uiState.isAnnotationMode,

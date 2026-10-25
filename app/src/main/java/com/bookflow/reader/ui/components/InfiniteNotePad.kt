@@ -2087,12 +2087,17 @@ fun InfiniteNotePad(
                         }
                     }
                     
-                    // Floating Zoom & Navigation HUD (Shown only in Fullscreen to keep minimized canvas completely clear for writing)
-                    if (isFullScreen) {
-                        Card(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(start = 14.dp, top = 14.dp),
+                    // Floating Zoom & Navigation HUD (Fades away when writing starts, reappears when pen bar is opened)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isToolbarCollapsed,
+                        enter = fadeIn() + slideInVertically { -it / 2 },
+                        exit = fadeOut() + slideOutVertically { -it / 2 },
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        if (isFullScreen) {
+                            Card(
+                                modifier = Modifier
+                                    .padding(start = 14.dp, top = 14.dp),
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = DarkSurface.copy(alpha = 0.88f)
@@ -2172,12 +2177,18 @@ fun InfiniteNotePad(
                             }
                         }
                     }
+                    }
 
-                    // Floating Multi-Page Document Navigation Pill (A3 Multi-Page Document)
-                    Card(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 14.dp),
+                    // Floating Multi-Page Document Navigation Pill (Fades away when writing starts, reappears when pen bar is opened)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isToolbarCollapsed,
+                        enter = fadeIn() + slideInVertically { -it / 2 },
+                        exit = fadeOut() + slideOutVertically { -it / 2 },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .padding(top = 14.dp),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = DarkSurface.copy(alpha = 0.94f)
@@ -2284,6 +2295,7 @@ fun InfiniteNotePad(
                                 )
                             }
                         }
+                    }
                     }
 
                     // Movable & Dockable Inking Toolbar Container

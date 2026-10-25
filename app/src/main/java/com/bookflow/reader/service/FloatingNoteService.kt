@@ -74,6 +74,7 @@ object FloatingNoteData {
     var canvasTemplate: CanvasTemplate = CanvasTemplate.DOT_GRID
     var bookUri: String = ""
     var bookTitle: String = ""
+    var universalNoteId: String = ""
     var isGlobalMode: Boolean = false
     var isStylusOnly: Boolean = true
     var isActive: Boolean = false
@@ -84,6 +85,7 @@ object FloatingNoteData {
         canvasTemplate = CanvasTemplate.DOT_GRID
         bookUri = ""
         bookTitle = ""
+        universalNoteId = ""
         isGlobalMode = false
         isStylusOnly = true
         isActive = false
@@ -462,14 +464,18 @@ class FloatingNoteService : Service() {
             FloatingNoteData.strokes = notes
             Thread {
                 try {
-                    if (FloatingNoteData.isGlobalMode) {
-                        repository.saveGlobalInfiniteNotes(notes)
+                    if (FloatingNoteData.universalNoteId.isNotBlank()) {
+                        repository.saveUniversalNoteStrokes(FloatingNoteData.universalNoteId, notes)
                     } else if (FloatingNoteData.bookUri.isNotBlank()) {
                         repository.saveInfiniteNotes(
                             FloatingNoteData.bookUri,
                             notes,
                             FloatingNoteData.bookTitle
                         )
+                    } else if (FloatingNoteData.isGlobalMode) {
+                        repository.saveGlobalInfiniteNotes(notes)
+                    } else {
+                        repository.saveGlobalInfiniteNotes(notes)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -481,8 +487,12 @@ class FloatingNoteService : Service() {
             FloatingNoteData.textBoxes = boxes
             Thread {
                 try {
-                    if (FloatingNoteData.bookUri.isNotBlank()) {
+                    if (FloatingNoteData.universalNoteId.isNotBlank()) {
+                        repository.saveUniversalNoteTextBoxes(FloatingNoteData.universalNoteId, boxes)
+                    } else if (FloatingNoteData.bookUri.isNotBlank()) {
                         repository.saveNoteTextBoxes(FloatingNoteData.bookUri, boxes)
+                    } else {
+                        repository.saveUniversalNoteTextBoxes("default_universal_note", boxes)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -511,10 +521,24 @@ class FloatingNoteService : Service() {
             stylusOnly = FloatingNoteData.isStylusOnly,
             isGlobalNotebook = FloatingNoteData.isGlobalMode,
             isOverlayMode = true,
-            onMinimizeToBubble = onMinimizeToBubble,
+            onMinimizeToBubble = {
+                FloatingNoteData.strokes = strokes
+                FloatingNoteData.textBoxes = textBoxes
+                FloatingNoteData.canvasTemplate = canvasTemplate
+                saveNotes(strokes)
+                saveTextBoxes(textBoxes)
+                onMinimizeToBubble()
+            },
             onDragOverlay = onDragWindow,
             onResizeOverlay = onResizeWindow,
-            onReturnToApp = onReturnToApp,
+            onReturnToApp = {
+                FloatingNoteData.strokes = strokes
+                FloatingNoteData.textBoxes = textBoxes
+                FloatingNoteData.canvasTemplate = canvasTemplate
+                saveNotes(strokes)
+                saveTextBoxes(textBoxes)
+                onReturnToApp()
+            },
             onAddStroke = { stroke ->
                 undoStack.add(strokes.toList())
                 redoStack.clear()
