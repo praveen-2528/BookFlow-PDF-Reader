@@ -480,7 +480,49 @@ fun ReaderScreen(
                 isGlobalNotebook = uiState.isGlobalNotebookMode,
                 onToggleGlobalNotebook = { viewModel.toggleGlobalNotebookMode() },
                 onMarkRecallSelection = { bitmap -> viewModel.startRecallFromBitmap(bitmap) },
-                stylusOnly = uiState.isStylusOnlyMode
+                stylusOnly = uiState.isStylusOnlyMode,
+                onFloatOverApps = {
+                    val hasOverlayPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        android.provider.Settings.canDrawOverlays(context)
+                    } else true
+
+                    if (!hasOverlayPermission) {
+                        try {
+                            val intent = android.content.Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                            android.widget.Toast.makeText(
+                                context,
+                                "Please grant 'Display over other apps' to float your notebook",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Could not open overlay settings: ${e.message}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        com.bookflow.reader.service.FloatingNoteData.strokes = uiState.infiniteNotes
+                        com.bookflow.reader.service.FloatingNoteData.textBoxes = uiState.noteTextBoxes
+                        com.bookflow.reader.service.FloatingNoteData.canvasTemplate = uiState.canvasTemplate
+                        com.bookflow.reader.service.FloatingNoteData.bookUri = uiState.bookUri
+                        com.bookflow.reader.service.FloatingNoteData.bookTitle = uiState.bookTitle
+                        com.bookflow.reader.service.FloatingNoteData.isGlobalMode = uiState.isGlobalNotebookMode
+                        com.bookflow.reader.service.FloatingNoteData.isStylusOnly = uiState.isStylusOnlyMode
+
+                        viewModel.toggleInfiniteNote()
+                        com.bookflow.reader.service.FloatingNoteService.start(context)
+                        android.widget.Toast.makeText(
+                            context,
+                            "Floating notebook active! You can now use any other app.",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             )
         }
         

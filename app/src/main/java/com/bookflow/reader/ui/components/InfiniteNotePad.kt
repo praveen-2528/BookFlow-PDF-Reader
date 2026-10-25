@@ -147,7 +147,13 @@ fun InfiniteNotePad(
     initialFullScreen: Boolean = true,
     onToggleGlobalNotebook: (() -> Unit)? = null,
     onMarkRecallSelection: ((Bitmap) -> Unit)? = null,
-    stylusOnly: Boolean = true
+    stylusOnly: Boolean = true,
+    isOverlayMode: Boolean = false,
+    onFloatOverApps: (() -> Unit)? = null,
+    onMinimizeToBubble: (() -> Unit)? = null,
+    onDragOverlay: ((Float, Float) -> Unit)? = null,
+    onResizeOverlay: ((Float, Float) -> Unit)? = null,
+    onReturnToApp: (() -> Unit)? = null
 ) {
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
@@ -295,7 +301,7 @@ fun InfiniteNotePad(
     }
 
     Box(modifier = Modifier.fillMaxSize()) { 
-        val cardModifier = if (isFullScreen) {
+        val cardModifier = if (isOverlayMode || isFullScreen) {
             Modifier.fillMaxSize()
         } else {
             Modifier
@@ -332,17 +338,21 @@ fun InfiniteNotePad(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .pointerInput(Unit) {
+                                .pointerInput(isOverlayMode) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        val minOffsetY = with(density) { 56.dp.toPx() } // Can never slide under notification panel
-                                        val minOffsetX = with(density) { 0.dp.toPx() }
-                                        val maxOffsetX = with(density) { (configuration.screenWidthDp.dp - 120.dp).toPx() }
-                                        val maxOffsetY = with(density) { (configuration.screenHeightDp.dp - 120.dp).toPx() }
-                                        windowOffset = Offset(
-                                            x = (windowOffset.x + dragAmount.x).coerceIn(minOffsetX, maxOffsetX),
-                                            y = (windowOffset.y + dragAmount.y).coerceIn(minOffsetY, maxOffsetY)
-                                        )
+                                        if (isOverlayMode && onDragOverlay != null) {
+                                            onDragOverlay(dragAmount.x, dragAmount.y)
+                                        } else {
+                                            val minOffsetY = with(density) { 56.dp.toPx() } // Can never slide under notification panel
+                                            val minOffsetX = with(density) { 0.dp.toPx() }
+                                            val maxOffsetX = with(density) { (configuration.screenWidthDp.dp - 120.dp).toPx() }
+                                            val maxOffsetY = with(density) { (configuration.screenHeightDp.dp - 120.dp).toPx() }
+                                            windowOffset = Offset(
+                                                x = (windowOffset.x + dragAmount.x).coerceIn(minOffsetX, maxOffsetX),
+                                                y = (windowOffset.y + dragAmount.y).coerceIn(minOffsetY, maxOffsetY)
+                                            )
+                                        }
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically
@@ -365,11 +375,77 @@ fun InfiniteNotePad(
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        // Action Buttons: ONLY Full Screen & Close (Solid, instantaneous clicks, no hover scaling)
+                        // Action Buttons: Minimize to Bubble / Float Over Apps / Return to BookFlow / Full Screen / Close
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // If in floating overlay mode, allow minimizing to a floating bubble
+                            if (isOverlayMode && onMinimizeToBubble != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .clickable {
+                                            onMinimizeToBubble()
+                                            try { com.bookflow.reader.util.HapticHelper.click(hapticContext) } catch (_: Exception) {}
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Minimize,
+                                        contentDescription = "Minimize to Bubble",
+                                        tint = WarmCream,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            // If in in-app mode, allow floating over all apps
+                            if (!isOverlayMode && onFloatOverApps != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .clickable {
+                                            onFloatOverApps()
+                                            try { com.bookflow.reader.util.HapticHelper.click(hapticContext) } catch (_: Exception) {}
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.PictureInPictureAlt,
+                                        contentDescription = "Float Over All Apps",
+                                        tint = WarmCream,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            // If in floating overlay mode, allow jumping back into BookFlow
+                            if (isOverlayMode && onReturnToApp != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .clickable {
+                                            onReturnToApp()
+                                            try { com.bookflow.reader.util.HapticHelper.click(hapticContext) } catch (_: Exception) {}
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.OpenInNew,
+                                        contentDescription = "Open in BookFlow",
+                                        tint = WarmCream,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
@@ -435,11 +511,55 @@ fun InfiniteNotePad(
 
                             Spacer(modifier = Modifier.width(16.dp))
 
-                            // Action Buttons: ONLY Windowed toggle & Close (Solid, instantaneous clicks, no hover scaling)
+                            // Action Buttons: Float Over Apps / Return to BookFlow / Windowed toggle / Close
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                // If in in-app mode, allow floating over all apps
+                                if (!isOverlayMode && onFloatOverApps != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.12f))
+                                            .clickable {
+                                                onFloatOverApps()
+                                                try { com.bookflow.reader.util.HapticHelper.click(hapticContext) } catch (_: Exception) {}
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.PictureInPictureAlt,
+                                            contentDescription = "Float Over All Apps",
+                                            tint = WarmCream,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
+                                // If in floating overlay mode, allow jumping back into BookFlow
+                                if (isOverlayMode && onReturnToApp != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.12f))
+                                            .clickable {
+                                                onReturnToApp()
+                                                try { com.bookflow.reader.util.HapticHelper.click(hapticContext) } catch (_: Exception) {}
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.OpenInNew,
+                                            contentDescription = "Open in BookFlow",
+                                            tint = WarmCream,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
@@ -3761,13 +3881,17 @@ fun InfiniteNotePad(
                                     color = Color.Gray.copy(alpha = 0.12f),
                                     shape = RoundedCornerShape(topStart = 20.dp, bottomEnd = 14.dp)
                                 )
-                                .pointerInput(Unit) {
+                                .pointerInput(isOverlayMode) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        windowSize = Offset(
-                                            x = (windowSize.x + dragAmount.x).coerceIn(minWidthPx, maxWidthPx),
-                                            y = (windowSize.y + dragAmount.y).coerceIn(minHeightPx, maxHeightPx)
-                                        )
+                                        if (isOverlayMode && onResizeOverlay != null) {
+                                            onResizeOverlay(dragAmount.x, dragAmount.y)
+                                        } else {
+                                            windowSize = Offset(
+                                                x = (windowSize.x + dragAmount.x).coerceIn(minWidthPx, maxWidthPx),
+                                                y = (windowSize.y + dragAmount.y).coerceIn(minHeightPx, maxHeightPx)
+                                            )
+                                        }
                                     }
                                 },
                             contentAlignment = Alignment.Center

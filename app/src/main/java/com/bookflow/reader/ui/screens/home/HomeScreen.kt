@@ -1430,6 +1430,51 @@ fun HomeScreen(navController: NavController) {
             onMarkRecallSelection = { bitmap ->
                 recallSnippetBitmap = bitmap
                 showRecallDialog = true
+            },
+            onFloatOverApps = {
+                val hasOverlayPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    android.provider.Settings.canDrawOverlays(context)
+                } else true
+
+                if (!hasOverlayPermission) {
+                    try {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(intent)
+                        android.widget.Toast.makeText(
+                            context,
+                            "Please grant 'Display over other apps' to float your notebook",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Could not open overlay settings: ${e.message}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    com.bookflow.reader.service.FloatingNoteData.strokes = globalNotebookStrokes
+                    com.bookflow.reader.service.FloatingNoteData.textBoxes = globalNoteTextBoxes
+                    com.bookflow.reader.service.FloatingNoteData.canvasTemplate = com.bookflow.reader.data.model.CanvasTemplate.DOT_GRID
+                    com.bookflow.reader.service.FloatingNoteData.bookUri = activeBookNote?.bookUri ?: ""
+                    com.bookflow.reader.service.FloatingNoteData.bookTitle = currentTitle
+                    com.bookflow.reader.service.FloatingNoteData.isGlobalMode = activeUniversalNote != null || activeBookNote == null
+                    com.bookflow.reader.service.FloatingNoteData.isStylusOnly = true
+
+                    showGlobalNotebook = false
+                    activeUniversalNote = null
+                    activeBookNote = null
+
+                    com.bookflow.reader.service.FloatingNoteService.start(context)
+                    android.widget.Toast.makeText(
+                        context,
+                        "Floating notebook active! You can now use any other app.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         )
     }

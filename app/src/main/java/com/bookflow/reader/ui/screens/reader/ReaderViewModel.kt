@@ -979,16 +979,29 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     // ---- Infinite Note Methods ----
 
     fun toggleInfiniteNote() {
-        _uiState.update { it.copy(isInfiniteNoteOpen = !it.isInfiniteNoteOpen) }
-        if (_uiState.value.isInfiniteNoteOpen && _uiState.value.infiniteNotes.isEmpty()) {
-            viewModelScope.launch(Dispatchers.IO) {
-                val notes = if (_uiState.value.isGlobalNotebookMode) {
-                    repository.loadGlobalInfiniteNotes()
-                } else {
-                    repository.loadInfiniteNotes(_uiState.value.bookUri)
-                }
-                withContext(Dispatchers.Main) {
-                    _uiState.update { it.copy(infiniteNotes = notes) }
+        val willOpen = !_uiState.value.isInfiniteNoteOpen
+        _uiState.update { it.copy(isInfiniteNoteOpen = willOpen) }
+        if (willOpen) {
+            reloadInfiniteNotes()
+        }
+    }
+
+    fun reloadInfiniteNotes() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val notes = if (_uiState.value.isGlobalNotebookMode) {
+                repository.loadGlobalInfiniteNotes()
+            } else {
+                repository.loadInfiniteNotes(_uiState.value.bookUri)
+            }
+            val boxes = repository.loadNoteTextBoxes(_uiState.value.bookUri)
+            withContext(Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        infiniteNotes = notes,
+                        noteTextBoxes = boxes,
+                        infiniteUndoCount = 0,
+                        infiniteRedoCount = 0
+                    )
                 }
             }
         }

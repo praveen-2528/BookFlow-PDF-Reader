@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val BookFlowDarkScheme = darkColorScheme(
+val BookFlowDarkScheme = darkColorScheme(
     primary = DeepBlue,                  // #790D16 Burgundy
     onPrimary = WarmCream,               // #F5EFE1 Linen
     primaryContainer = DeepBlueDark,
@@ -32,7 +32,7 @@ private val BookFlowDarkScheme = darkColorScheme(
     outline = OceanBlueDark
 )
 
-private val BookFlowLightScheme = lightColorScheme(
+val BookFlowLightScheme = lightColorScheme(
     primary = DeepBlue,                  // #790D16 Burgundy
     onPrimary = WarmCream,
     primaryContainer = LightMint,        // #E5D3AF Parchment
@@ -62,9 +62,10 @@ fun BookFLowTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            (view.context as? Activity)?.window?.let { window ->
+                window.statusBarColor = colorScheme.background.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            }
         }
     }
 
